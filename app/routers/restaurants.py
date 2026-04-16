@@ -14,6 +14,22 @@ from app.schemas.restaurant import RestaurantCreate, RestaurantOut, RestaurantUp
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
 
+@router.get("/my", response_model=List[RestaurantOut])
+async def list_my_restaurants(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("owner")),
+) -> List[Restaurant]:
+    """Return ALL restaurants owned by the current owner (active and inactive).
+    Used by the owner dashboard so deactivated restaurants remain visible.
+    """
+    result = await db.scalars(
+        select(Restaurant)
+        .where(Restaurant.owner_id == current_user.id)
+        .order_by(Restaurant.name)
+    )
+    return list(result.all())
+
+
 @router.get("", response_model=List[RestaurantOut])
 async def list_restaurants(
     search: Optional[str] = None,
